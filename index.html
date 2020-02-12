@@ -14,14 +14,6 @@
     <div class="container">
       <div class="columns">
         <div class="column is-half">
-          <!-- <p class="title is-5">步驟</p>
-          <ol style="margin-left: 1rem; margin-bottom: 2rem;">
-            <li>打開srt字幕檔案</li>
-            <li>將裡面文字複製貼上於此處</li>
-            <li>按「校準」</li>
-            <li>複製此處文字貼上於srt檔案</li>
-            <li>儲存srt檔案</li>
-          </ol> -->
           <div class="field">
             <div class="control">
               <div class="file has-name">
@@ -52,17 +44,12 @@
               <button
                 class="button has-text-weight-bold"
                 @click="download"
-                :disabled="!checked"
+                :disabled="!allChecked"
               >
                 下載校準後字幕
               </button>
             </div>
           </div>
-        </div>
-      </div>
-      <div class="columns">
-        <div class="column is-half">
-          
         </div>
       </div>
     </div>
@@ -71,6 +58,34 @@
 <script>
   new Vue({
     el: '#app',
+    computed: {
+      timelines () {
+        if (this.text === '') {
+          return []
+        }
+        const timelines = this.text.trim().split(/\r\n\r\n|\r\r|\n\n/).map((e) => {
+          const splitted = e.split(/\r\n|\r|\n/)
+
+          const number = splitted[0]
+          const sentence = splitted[2]
+          const start = this.toMilliseconds(splitted[1].split(' --> ')[0])
+          const end = this.toMilliseconds(splitted[1].split(' --> ')[1])
+          return { number, start, end, sentence }
+        })
+        return timelines
+      },
+      allChecked () {
+        if (this.timelines.length === 0) {
+          return false
+        }
+        for (let i = 1; i < this.timelines.length; i++) {
+          if (this.timelines[i].start <= this.timelines[i-1].end) {
+            return false
+          }
+        }
+        return true
+      },
+    },
     methods: {
       paddy (num, padlen, padchar) {
         var pad_char = typeof padchar !== 'undefined' ? padchar : '0'
@@ -99,26 +114,16 @@
         if (this.text === '') {
           return
         }
-        const timelines = this.text.trim().split(/\r\n\r\n|\r\r|\n\n/).map((e) => {
-          const splitted = e.split(/\r\n|\r|\n/)
-
-          const number = splitted[0]
-          const sentence = splitted[2]
-          const start = this.toMilliseconds(splitted[1].split(' --> ')[0])
-          const end = this.toMilliseconds(splitted[1].split(' --> ')[1])
-          return { number, start, end, sentence }
-        })
-        for (let i = 1; i < timelines.length; i++) {
-          if (timelines[i].start <= timelines[i-1].end) {
-            timelines[i-1].end = timelines[i].start - 1
+        for (let i = 1; i < this.timelines.length; i++) {
+          if (this.timelines[i].start <= this.timelines[i-1].end) {
+            this.timelines[i-1].end = this.timelines[i].start - 1
           }
         }
         let newText = ''
-        for (let line of timelines) {
+        for (let line of this.timelines) {
           newText += `${line.number}\n${this.toSrtFormat(line.start)} --> ${this.toSrtFormat(line.end)}\n${line.sentence}\n\n`
         }
         this.text = newText
-        this.checked = true
       },
       processFile (event) {
         const file = event.target.files[0]
@@ -128,7 +133,6 @@
           this.text = e.target.result
         }
         reader.readAsText(file)
-        this.checked = false
       },
       download () {
         var element = document.createElement('a')
@@ -144,7 +148,6 @@
       return {
         text: '',
         fileName: '',
-        checked: false,
       }
     },
   });
