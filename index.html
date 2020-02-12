@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>字幕重疊校準</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.8.0/css/bulma.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+</head>
+<body>
+<div id="app">
+  <div class="section">
+    <div class="container">
+      <div class="columns">
+        <div class="column is-half">
+          <!-- <p class="title is-5">步驟</p>
+          <ol style="margin-left: 1rem; margin-bottom: 2rem;">
+            <li>打開srt字幕檔案</li>
+            <li>將裡面文字複製貼上於此處</li>
+            <li>按「校準」</li>
+            <li>複製此處文字貼上於srt檔案</li>
+            <li>儲存srt檔案</li>
+          </ol> -->
+          <div class="field">
+            <div class="control">
+              <div class="file has-name">
+                <label class="file-label">
+                  <input class="file-input" type="file" name="subtitle" @change="processFile($event)">
+                  <span class="file-cta">
+                    <span class="file-label">
+                      選擇srt字幕檔案
+                    </span>
+                  </span>
+                  <span class="file-name">
+                    {{ fileName }}
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="control">
+              <textarea class="textarea" v-model="text" rows="10"></textarea>
+            </div>
+          </div>
+          <div class="field is-grouped">
+            <div class="control">
+              <button class="button is-primary has-text-weight-bold" @click="check">校準</button>
+            </div>
+            <div class="control">
+              <button
+                class="button has-text-weight-bold"
+                @click="download"
+                :disabled="!checked"
+              >
+                下載校準後字幕
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="columns">
+        <div class="column is-half">
+          
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  new Vue({
+    el: '#app',
+    methods: {
+      paddy (num, padlen, padchar) {
+        var pad_char = typeof padchar !== 'undefined' ? padchar : '0'
+        var padlen = typeof padlen !== 'undefined' ? padlen : 2
+        var pad = new Array(1 + padlen).join(pad_char)
+        return (pad + num).slice(-pad.length)
+      },
+      toMilliseconds (s) {
+        const regex = /([0-9]{2}):([0-9]{2}):([0-9]{2}),([0-9]{3})/
+        const hour = parseInt(s.match(regex)[1])
+        const minute = parseInt(s.match(regex)[2])
+        const second = parseInt(s.match(regex)[3])
+        const ms = parseInt(s.match(regex)[4])
+
+        return ms + second*1000 + minute*1000*60 + hour*1000*60*60
+      },
+      toSrtFormat (time) {
+        const ms = this.paddy(time % 1000, 3)
+        const second = this.paddy(parseInt(time / 1000) % 60)
+        const minute = this.paddy(parseInt(time / 1000 / 60) % 60)
+        const hour = this.paddy(parseInt(time / 1000 / 60 / 60))
+
+        return `${hour}:${minute}:${second},${ms}`
+      },
+      check () {
+        if (this.text === '') {
+          return
+        }
+        const timelines = this.text.trim().split(/\r\n\r\n|\r\r|\n\n/).map((e) => {
+          const splitted = e.split(/\r\n|\r|\n/)
+
+          const number = splitted[0]
+          const sentence = splitted[2]
+          const start = this.toMilliseconds(splitted[1].split(' --> ')[0])
+          const end = this.toMilliseconds(splitted[1].split(' --> ')[1])
+          return { number, start, end, sentence }
+        })
+        for (let i = 1; i < timelines.length; i++) {
+          if (timelines[i].start <= timelines[i-1].end) {
+            timelines[i-1].end = timelines[i].start - 1
+          }
+        }
+        let newText = ''
+        for (let line of timelines) {
+          newText += `${line.number}\n${this.toSrtFormat(line.start)} --> ${this.toSrtFormat(line.end)}\n${line.sentence}\n\n`
+        }
+        this.text = newText
+        this.checked = true
+      },
+      processFile (event) {
+        const file = event.target.files[0]
+        this.fileName = file.name
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          this.text = e.target.result
+        }
+        reader.readAsText(file)
+        this.checked = false
+      },
+      download () {
+        var element = document.createElement('a')
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(this.text))
+        element.setAttribute('download', this.fileName);
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+      },
+    },
+    data () {
+      return {
+        text: '',
+        fileName: '',
+        checked: false,
+      }
+    },
+  });
+</script>
+</body>
+</html>
