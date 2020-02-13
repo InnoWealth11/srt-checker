@@ -79,7 +79,7 @@
           return false
         }
         for (let i = 1; i < this.timelines.length; i++) {
-          if (this.timelines[i].start <= this.timelines[i-1].end) {
+          if (this.timelines[i].start - 10 < this.timelines[i-1].end) {
             return false
           }
         }
@@ -115,8 +115,8 @@
           return
         }
         for (let i = 1; i < this.timelines.length; i++) {
-          if (this.timelines[i].start <= this.timelines[i-1].end) {
-            this.timelines[i-1].end = this.timelines[i].start - 1
+          if (this.timelines[i].start - 10 < this.timelines[i-1].end) {
+            this.timelines[i-1].end = this.timelines[i].start - 10
           }
         }
         let newText = ''
